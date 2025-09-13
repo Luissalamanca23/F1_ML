@@ -1,0 +1,147 @@
+# Here you can define all your data sets by using simple YAML syntax.
+#
+# Documentation for this file format can be found in "The Data Catalog"
+# Link: https://docs.kedro.org/en/stable/data/data_catalog.html
+#
+# We support interacting with a variety of data stores including local file systems, cloud, network and HDFS
+#
+# An example data set definition can look as follows:
+#
+#bikes:
+#  type: pandas.CSVDataset
+#  filepath: "data/01_raw/bikes.csv"
+#
+#weather:
+#  type: spark.SparkDataset
+#  filepath: s3a://your_bucket/data/01_raw/weather*
+#  file_format: csv
+#  credentials: dev_s3
+#  load_args:
+#    header: True
+#    inferSchema: True
+#  save_args:
+#    sep: '|'
+#    header: True
+#
+#scooters:
+#  type: pandas.SQLTableDataset
+#  credentials: scooters_credentials
+#  table_name: scooters
+#  load_args:
+#    index_col: ['name']
+#    columns: ['name', 'gear']
+#  save_args:
+#    if_exists: 'replace'
+#    # if_exists: 'fail'
+#    # if_exists: 'append'
+#
+# The Data Catalog supports being able to reference the same file using two different Dataset implementations
+# (transcoding), templating and a way to reuse arguments that are frequently repeated. See more here:
+# https://docs.kedro.org/en/stable/data/data_catalog.html
+
+# F1 ML Raw Data Catalog
+# Raw data from Formula 1 datasets
+
+driver_details:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Driver_Details.csv
+
+driver_rankings:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Driver_Rankings.csv
+
+constructor_performance:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Constructor_Performance.csv
+
+constructor_rankings:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Constructor_Rankings.csv
+
+race_results:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Race_Results.csv
+
+qualifying_results:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Qualifying_Results.csv
+
+lap_timings:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Lap_Timings.csv
+
+pit_stop_records:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Pit_Stop_Records.csv
+
+race_schedule:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Race_Schedule.csv
+
+race_status:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Race_Status.csv
+
+season_summaries:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Season_Summaries.csv
+
+sprint_race_results:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Sprint_Race_Results.csv
+
+team_details:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Team_Details.csv
+
+track_information:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Track_Information.csv
+
+# Intermediate data
+processed_driver_data:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/processed_driver_data.parquet
+
+processed_race_data:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/processed_race_data.parquet
+
+processed_constructor_data:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/processed_constructor_data.parquet
+
+# Primary data
+model_input_table:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/model_input_table.parquet
+
+# Feature data
+feature_matrix:
+  type: pandas.ParquetDataset
+  filepath: data/04_feature/feature_matrix.parquet
+
+# Model input
+train_dataset:
+  type: pandas.ParquetDataset
+  filepath: data/05_model_input/train_dataset.parquet
+
+test_dataset:
+  type: pandas.ParquetDataset
+  filepath: data/05_model_input/test_dataset.parquet
+
+# Models
+race_prediction_model:
+  type: pickle.PickleDataset
+  filepath: data/06_models/race_prediction_model.pickle
+  versioned: true
+
+# Model output
+predictions:
+  type: pandas.CSVDataset
+  filepath: data/07_model_output/predictions.csv
+
+# Reporting
+model_performance_report:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/model_performance_report.csv

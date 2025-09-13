@@ -1,0 +1,153 @@
+# F1 ML Project Parameters
+# Configuration for Formula 1 Machine Learning pipeline
+
+# Data processing parameters
+data_processing:
+  # Temporal filters
+  start_year: 2020
+  end_year: 2024
+  
+  # Feature engineering
+  rolling_window_races: 3  # Number of races for moving averages
+  min_races_per_driver: 5  # Minimum races for driver inclusion
+  
+  # Data quality
+  missing_data_threshold: 0.3  # Max proportion of missing values allowed
+  outlier_removal:
+    enabled: true
+    method: 'IQR'  # IQR or z-score
+    threshold: 1.5  # IQR multiplier or z-score threshold
+
+# Model parameters
+model:
+  # Train/test split
+  test_size: 0.2
+  random_state: 42
+  
+  # Model selection
+  model_type: 'xgboost'  # Options: xgboost, random_forest, lightgbm, neural_network
+  
+  # XGBoost parameters
+  xgboost:
+    n_estimators: 100
+    max_depth: 6
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    objective: 'reg:squarederror'
+    
+  # Random Forest parameters
+  random_forest:
+    n_estimators: 100
+    max_depth: 10
+    min_samples_split: 5
+    min_samples_leaf: 2
+    
+  # LightGBM parameters
+  lightgbm:
+    n_estimators: 100
+    num_leaves: 31
+    learning_rate: 0.1
+    feature_fraction: 0.9
+    bagging_fraction: 0.8
+    bagging_freq: 5
+    
+  # Neural Network parameters
+  neural_network:
+    hidden_layers: [128, 64, 32]
+    activation: 'relu'
+    dropout_rate: 0.2
+    batch_size: 32
+    epochs: 50
+    learning_rate: 0.001
+    optimizer: 'adam'
+
+# Feature engineering parameters
+features:
+  # Driver features
+  driver_features:
+    - 'avg_finish_position'
+    - 'avg_qualifying_position'
+    - 'points_per_race'
+    - 'dnf_rate'
+    - 'win_rate'
+    - 'podium_rate'
+    - 'career_points'
+    
+  # Constructor features
+  constructor_features:
+    - 'constructor_points'
+    - 'constructor_win_rate'
+    - 'constructor_reliability'
+    - 'avg_pit_stop_time'
+    
+  # Track features
+  track_features:
+    - 'track_length'
+    - 'number_of_turns'
+    - 'track_type'  # street, permanent, mixed
+    - 'elevation_change'
+    
+  # Weather features
+  weather_features:
+    - 'temperature'
+    - 'rain_probability'
+    - 'wind_speed'
+    
+  # Interaction features
+  interaction_features:
+    - 'driver_track_history'
+    - 'driver_constructor_synergy'
+    - 'recent_form'
+
+# Evaluation metrics
+evaluation:
+  metrics:
+    - 'mae'
+    - 'rmse'
+    - 'r2'
+    - 'mape'
+  
+  # Cross-validation
+  cv_folds: 5
+  cv_strategy: 'time_series'  # time_series or stratified
+  
+  # Hyperparameter tuning
+  hyperparameter_tuning:
+    enabled: true
+    method: 'optuna'  # grid_search, random_search, optuna
+    n_trials: 100
+    timeout: 3600  # seconds
+
+# Reporting parameters
+reporting:
+  # Visualizations
+  create_plots: true
+  plot_types:
+    - 'feature_importance'
+    - 'prediction_vs_actual'
+    - 'residual_plot'
+    - 'learning_curve'
+    
+  # Report generation
+  generate_html_report: true
+  generate_pdf_report: false
+  
+  # Dashboard
+  dashboard:
+    enabled: true
+    port: 8050
+    host: '127.0.0.1'
+
+# Logging parameters
+logging:
+  level: 'INFO'
+  log_to_file: true
+  log_file_path: 'logs/f1ml.log'
+  
+# MLflow tracking
+mlflow:
+  enabled: true
+  tracking_uri: 'mlruns'
+  experiment_name: 'f1_race_prediction'
+  run_name: 'baseline_model'

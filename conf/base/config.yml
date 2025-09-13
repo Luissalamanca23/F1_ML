@@ -1,0 +1,98 @@
+# F1 ML Project Configuration
+# Main configuration file for the project
+
+# Project metadata
+project:
+  name: "F1 Machine Learning"
+  version: "1.0.0"
+  description: "Formula 1 race prediction and analysis using machine learning"
+
+# Data sources configuration
+data_sources:
+  # Local CSV files
+  source_type: "local_csv"
+  base_path: "data/01_raw/"
+  
+  # Available datasets
+  datasets:
+    - Driver_Details.csv
+    - Driver_Rankings.csv
+    - Constructor_Performance.csv
+    - Constructor_Rankings.csv
+    - Race_Results.csv
+    - Qualifying_Results.csv
+    - Lap_Timings.csv
+    - Pit_Stop_Records.csv
+    - Race_Schedule.csv
+    - Race_Status.csv
+    - Season_Summaries.csv
+    - Sprint_Race_Results.csv
+    - Team_Details.csv
+    - Track_Information.csv
+
+# Pipeline configuration
+pipeline:
+  # Stages to execute
+  stages:
+    - data_ingestion
+    - data_preprocessing
+    - feature_engineering
+    - model_training
+    - model_evaluation
+    - reporting
+    
+  # Parallel processing
+  parallel_processing:
+    enabled: true
+    n_jobs: -1  # Use all available cores
+    
+  # Memory optimization
+  memory_optimization:
+    chunk_size: 10000  # Process data in chunks
+    use_dtypes_optimization: true
+    
+# Output configuration
+output:
+  # Intermediate data format
+  intermediate_format: "parquet"  # parquet, csv, feather
+  
+  # Compression
+  compression: "snappy"  # snappy, gzip, brotli, none
+  
+  # Versioning
+  versioning:
+    enabled: true
+    max_versions: 5
+    
+# Validation configuration
+validation:
+  # Data validation checks
+  data_checks:
+    - check_nulls
+    - check_duplicates
+    - check_data_types
+    - check_ranges
+    
+  # Schema validation
+  schema_validation:
+    enabled: true
+    strict_mode: false
+    
+# Environment configuration
+environment:
+  # Python environment
+  python_version: "3.11"
+  
+  # Dependencies management
+  dependency_manager: "uv"  # uv, pip, conda
+  
+  # Development settings
+  development:
+    debug: true
+    profiling: false
+    
+  # Production settings
+  production:
+    debug: false
+    profiling: false
+    optimize: true
