@@ -13,6 +13,7 @@ data/**
 
 # except their sub-folders
 !data/**/
+!*.dvc
 
 # also keep all .gitkeep files
 !.gitkeep
