@@ -98,20 +98,68 @@ track_information:
   type: pandas.CSVDataset
   filepath: data/01_raw/Track_Information.csv
 
-# Intermediate data
-processed_driver_data:
+# Intermediate data - Cleaned datasets
+race_results_clean:
   type: pandas.ParquetDataset
-  filepath: data/02_intermediate/processed_driver_data.parquet
+  filepath: data/02_intermediate/race_results_clean.parquet
 
-processed_race_data:
+qualifying_results_clean:
   type: pandas.ParquetDataset
-  filepath: data/02_intermediate/processed_race_data.parquet
+  filepath: data/02_intermediate/qualifying_results_clean.parquet
 
-processed_constructor_data:
+lap_timings_clean:
   type: pandas.ParquetDataset
-  filepath: data/02_intermediate/processed_constructor_data.parquet
+  filepath: data/02_intermediate/lap_timings_clean.parquet
 
-# Primary data
+driver_details_processed:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/driver_details_processed.parquet
+
+# Intermediate data - Imputed datasets
+qualifying_results_imputed:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/qualifying_results_imputed.parquet
+
+# Intermediate data - Feature engineering
+lap_statistics:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/lap_statistics.parquet
+
+race_results_enhanced:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/race_results_enhanced.parquet
+
+constructor_yearly_stats:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/constructor_yearly_stats.parquet
+
+race_results_circuit:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/race_results_circuit.parquet
+
+# Intermediate data - Master datasets
+master_dataset_raw:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/master_dataset_raw.parquet
+
+master_dataset_clean:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/master_dataset_clean.parquet
+
+master_dataset_encoded:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/master_dataset_encoded.parquet
+
+# Primary data - Final modeling datasets
+regression_dataset:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/regression_dataset.parquet
+
+classification_dataset:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/classification_dataset.parquet
+
+# Legacy primary data
 model_input_table:
   type: pandas.ParquetDataset
   filepath: data/03_primary/model_input_table.parquet

@@ -1,6 +1,6 @@
 from kedro.framework.hooks import hook_impl
-from pyspark import SparkConf
-from pyspark.sql import SparkSession
+# from pyspark import SparkConf
+# from pyspark.sql import SparkSession
 
 
 class SparkHooks:
@@ -8,17 +8,22 @@ class SparkHooks:
     def after_context_created(self, context) -> None:
         """Initialises a SparkSession using the config
         defined in project's conf folder.
+
+        Temporarily disabled for testing data preprocessing pipeline.
         """
+        # Temporalmente deshabilitado para evitar dependencias de Java/Spark
+        # durante el desarrollo del pipeline de preprocesamiento
+        pass
 
-        # Load the spark configuration in spark.yaml using the config loader
-        parameters = context.config_loader["spark"]
-        spark_conf = SparkConf().setAll(parameters.items())
+        # # Load the spark configuration in spark.yaml using the config loader
+        # parameters = context.config_loader["spark"]
+        # spark_conf = SparkConf().setAll(parameters.items())
 
-        # Initialise the spark session
-        spark_session_conf = (
-            SparkSession.builder.appName(context.project_path.name)
-            .enableHiveSupport()
-            .config(conf=spark_conf)
-        )
-        _spark_session = spark_session_conf.getOrCreate()
-        _spark_session.sparkContext.setLogLevel("WARN")
+        # # Initialise the spark session
+        # spark_session_conf = (
+        #     SparkSession.builder.appName(context.project_path.name)
+        #     .enableHiveSupport()
+        #     .config(conf=spark_conf)
+        # )
+        # _spark_session = spark_session_conf.getOrCreate()
+        # _spark_session.sparkContext.setLogLevel("WARN")
