@@ -19,7 +19,11 @@ from .nodes import (
     crear_dataset_unificado,
     limpiar_dataset_final,
     codificar_variables_categoricas,
-    crear_datasets_modelado
+    crear_datasets_modelado,
+    tratar_outliers_avanzado,
+    imputar_valores_faltantes_avanzado,
+    detectar_multicolinealidad,
+    aplicar_validacion_temporal
 )
 
 

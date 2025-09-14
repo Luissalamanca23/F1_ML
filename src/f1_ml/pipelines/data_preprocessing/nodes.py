@@ -9,9 +9,13 @@ import pandas as pd
 import numpy as np
 import warnings
 from typing import Dict, Tuple, List
-from sklearn.impute import KNNImputer
+from sklearn.impute import KNNImputer, SimpleImputer
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import IterativeImputer
 from sklearn.preprocessing import LabelEncoder
 from datetime import datetime
+from scipy import stats
+from scipy.stats import zscore
 
 warnings.filterwarnings('ignore')
 
@@ -103,8 +107,62 @@ def limpiar_resultados_clasificacion(qualifying_results: pd.DataFrame) -> pd.Dat
     return df_qual
 
 
+def tratar_outliers_avanzado(df: pd.DataFrame, columns: List[str],
+                           method: str = 'iqr', factor: float = 1.5) -> pd.DataFrame:
+    """Detecta y trata outliers usando métodos avanzados.
+
+    Args:
+        df: DataFrame a procesar
+        columns: Lista de columnas a procesar
+        method: Método ('iqr', 'zscore', 'winsorize')
+        factor: Factor multiplicativo para límites
+
+    Returns:
+        DataFrame con outliers tratados
+    """
+    df_clean = df.copy()
+
+    for col in columns:
+        if col not in df_clean.columns or df_clean[col].dtype not in ['int64', 'float64']:
+            continue
+
+        if method == 'iqr':
+            Q1 = df_clean[col].quantile(0.25)
+            Q3 = df_clean[col].quantile(0.75)
+            IQR = Q3 - Q1
+            lower_bound = Q1 - factor * IQR
+            upper_bound = Q3 + factor * IQR
+
+            # Winsorización en lugar de eliminación
+            df_clean[col] = df_clean[col].clip(lower=lower_bound, upper=upper_bound)
+
+        elif method == 'zscore':
+            z_scores = np.abs(zscore(df_clean[col].dropna()))
+            threshold = factor  # Usar factor como threshold z-score
+            outlier_mask = z_scores > threshold
+
+            # Reemplazar outliers con percentiles
+            if outlier_mask.any():
+                p_lower = df_clean[col].quantile(0.05)
+                p_upper = df_clean[col].quantile(0.95)
+                df_clean.loc[df_clean[col] < p_lower, col] = p_lower
+                df_clean.loc[df_clean[col] > p_upper, col] = p_upper
+
+        elif method == 'winsorize':
+            # Winsorización por percentiles
+            lower_percentile = (100 - 95) / 2  # 2.5%
+            upper_percentile = 100 - lower_percentile  # 97.5%
+
+            lower_bound = df_clean[col].quantile(lower_percentile / 100)
+            upper_bound = df_clean[col].quantile(upper_percentile / 100)
+
+            df_clean[col] = df_clean[col].clip(lower=lower_bound, upper=upper_bound)
+
+    return df_clean
+
+
 def limpiar_tiempos_vuelta(lap_timings: pd.DataFrame) -> pd.DataFrame:
-    """Limpia y filtra los tiempos de vuelta.
+    """Limpia y filtra los tiempos de vuelta con tratamiento avanzado de outliers.
 
     Args:
         lap_timings: DataFrame con tiempos de vuelta
@@ -117,11 +175,17 @@ def limpiar_tiempos_vuelta(lap_timings: pd.DataFrame) -> pd.DataFrame:
     # Convertir milisegundos a segundos
     df_laps['seconds'] = df_laps['milliseconds'] / 1000
 
-    # Filtrar valores extremos
-    df_laps_clean = df_laps[
-        (df_laps['seconds'] >= 50) &
-        (df_laps['seconds'] <= 300)
+    # Filtro inicial básico para valores imposibles
+    df_laps = df_laps[
+        (df_laps['seconds'] >= 60) &  # Tiempo mínimo más realista
+        (df_laps['seconds'] <= 200)   # Tiempo máximo más estricto
     ].copy()
+
+    # Tratamiento avanzado de outliers por grupo (raceId)
+    time_columns = ['seconds']
+    df_laps_clean = df_laps.groupby('raceId').apply(
+        lambda x: tratar_outliers_avanzado(x, time_columns, method='iqr', factor=2.0)
+    ).reset_index(drop=True)
 
     return df_laps_clean
 
@@ -163,8 +227,96 @@ def procesar_detalles_piloto(driver_details: pd.DataFrame) -> pd.DataFrame:
     return df_drivers
 
 
+def imputar_valores_faltantes_avanzado(df: pd.DataFrame) -> pd.DataFrame:
+    """Imputa valores faltantes usando estrategias avanzadas específicas por variable.
+
+    Args:
+        df: DataFrame con valores faltantes
+
+    Returns:
+        DataFrame con valores imputados
+    """
+    df_imputed = df.copy()
+
+    # 1. TRATAMIENTO ESPECÍFICO PARA Q3
+    # Q3 tiene 68% faltantes porque solo top 10 clasifican
+    if 'q3_seconds' in df_imputed.columns and 'position' in df_imputed.columns:
+        # Crear indicador de si clasificó para Q3
+        df_imputed['qualified_for_q3'] = (~df_imputed['q3_seconds'].isna()).astype(int)
+
+        # Para los que no clasificaron, usar la peor Q2 + penalización
+        if 'q2_seconds' in df_imputed.columns:
+            worst_q2_by_race = df_imputed.groupby('raceId')['q2_seconds'].transform('max')
+            penalty_factor = 1.02  # 2% de penalización
+
+            mask_no_q3 = df_imputed['q3_seconds'].isna()
+            df_imputed.loc[mask_no_q3, 'q3_seconds'] = worst_q2_by_race[mask_no_q3] * penalty_factor
+
+    # 2. IMPUTACIÓN CONTEXTUAL POR GRUPO
+    # Agrupar por raceId y constructor para imputación más precisa
+    grouping_cols = []
+    if 'raceId' in df_imputed.columns:
+        grouping_cols.append('raceId')
+    if 'constructorId' in df_imputed.columns:
+        grouping_cols.append('constructorId')
+
+    if grouping_cols:
+        numeric_cols_to_impute = [
+            'q1_seconds', 'q2_seconds', 'avg_qualifying_time', 'best_qualifying_time'
+        ]
+        available_cols = [col for col in numeric_cols_to_impute if col in df_imputed.columns]
+
+        for col in available_cols:
+            missing_pct = df_imputed[col].isnull().sum() / len(df_imputed) * 100
+
+            if 0 < missing_pct < 30:  # Solo si faltan menos del 30%
+                # Imputación por mediana del grupo
+                df_imputed[col] = df_imputed.groupby(grouping_cols)[col].transform(
+                    lambda x: x.fillna(x.median()) if not x.isna().all() else x
+                )
+
+                # Fallback a mediana global si aún faltan valores
+                df_imputed[col] = df_imputed[col].fillna(df_imputed[col].median())
+
+    # 3. IMPUTACIÓN ITERATIVA PARA VARIABLES RELACIONADAS
+    # Solo para variables con correlación alta
+    correlated_vars = ['q1_seconds', 'q2_seconds', 'avg_qualifying_time', 'best_qualifying_time']
+    available_corr_vars = [col for col in correlated_vars if col in df_imputed.columns]
+
+    if len(available_corr_vars) >= 3:
+        # Usar IterativeImputer solo si tenemos suficientes variables correlacionadas
+        iterative_imputer = IterativeImputer(
+            max_iter=10,
+            random_state=42,
+            initial_strategy='median'
+        )
+
+        # Aplicar solo a casos con pocos faltantes por fila
+        subset_cols = available_corr_vars
+        subset_data = df_imputed[subset_cols].copy()
+
+        # Solo impute filas que no tengan más del 50% de valores faltantes
+        missing_ratio = subset_data.isnull().sum(axis=1) / len(subset_cols)
+        mask_imputable = missing_ratio <= 0.5
+
+        if mask_imputable.sum() > 0:
+            imputed_values = iterative_imputer.fit_transform(subset_data[mask_imputable])
+            df_imputed.loc[mask_imputable, subset_cols] = imputed_values
+
+    # 4. IMPUTACIÓN SIMPLE PARA EL RESTO
+    simple_imputer = SimpleImputer(strategy='median')
+
+    remaining_numeric = df_imputed.select_dtypes(include=[np.number]).columns
+    remaining_with_na = [col for col in remaining_numeric if df_imputed[col].isnull().any()]
+
+    for col in remaining_with_na:
+        df_imputed[[col]] = simple_imputer.fit_transform(df_imputed[[col]])
+
+    return df_imputed
+
+
 def imputar_valores_faltantes(qualifying_results: pd.DataFrame) -> pd.DataFrame:
-    """Imputa valores faltantes en los resultados de clasificación.
+    """Wrapper para mantener compatibilidad con pipeline existente.
 
     Args:
         qualifying_results: DataFrame con resultados de clasificación
@@ -172,27 +324,87 @@ def imputar_valores_faltantes(qualifying_results: pd.DataFrame) -> pd.DataFrame:
     Returns:
         DataFrame con valores imputados
     """
-    df_qual = qualifying_results.copy()
+    return imputar_valores_faltantes_avanzado(qualifying_results)
 
-    # Columnas numéricas para KNN
-    numeric_cols = ['position', 'q1_seconds', 'q2_seconds', 'q3_seconds']
-    available_numeric = [col for col in numeric_cols if col in df_qual.columns]
 
-    if len(available_numeric) > 1:
-        # Aplicar KNN Imputer
-        knn_imputer = KNNImputer(n_neighbors=5, weights='distance')
+def crear_features_avanzadas(df_master: pd.DataFrame) -> pd.DataFrame:
+    """Crea features de ingeniería avanzadas para mejorar el modelado.
 
-        subset_data = df_qual[available_numeric].copy()
+    Args:
+        df_master: Dataset maestro
 
-        # Imputar solo columnas con faltantes razonables (< 50%)
-        for col in available_numeric:
-            missing_pct = df_qual[col].isnull().sum() / len(df_qual) * 100
-            if 0 < missing_pct < 50 and 'seconds' in col:
-                imputed_values = knn_imputer.fit_transform(subset_data)
-                imputed_df = pd.DataFrame(imputed_values, columns=available_numeric, index=subset_data.index)
-                df_qual[col] = imputed_df[col]
+    Returns:
+        DataFrame con features adicionales
+    """
+    df_enhanced = df_master.copy()
 
-    return df_qual
+    # 1. RATIOS Y DIFERENCIAS ENTRE VARIABLES
+    if 'qualifying_position' in df_enhanced.columns and 'grid' in df_enhanced.columns:
+        # Diferencia entre posición de clasificación y parrilla (penalizaciones)
+        df_enhanced['qualifying_grid_diff'] = df_enhanced['qualifying_position'] - df_enhanced['grid']
+        df_enhanced['grid_penalty'] = (df_enhanced['qualifying_grid_diff'] > 0).astype(int)
+
+    if 'best_qualifying_time' in df_enhanced.columns and 'avg_qualifying_time' in df_enhanced.columns:
+        # Consistencia en clasificación (menor es mejor)
+        df_enhanced['qualifying_consistency'] = (
+            df_enhanced['avg_qualifying_time'] - df_enhanced['best_qualifying_time']
+        )
+
+    # 2. FEATURES DE RENDIMIENTO RELATIVO
+    if 'constructor_avg_points' in df_enhanced.columns and 'avg_points_last_3' in df_enhanced.columns:
+        # Rendimiento del piloto vs constructor
+        df_enhanced['driver_vs_constructor_performance'] = (
+            df_enhanced['avg_points_last_3'] / (df_enhanced['constructor_avg_points'] + 0.1)
+        )
+
+    if 'avg_position_at_circuit' in df_enhanced.columns and 'avg_position_last_3' in df_enhanced.columns:
+        # Especialización en circuito
+        df_enhanced['circuit_specialization'] = (
+            df_enhanced['avg_position_last_3'] / (df_enhanced['avg_position_at_circuit'] + 0.1)
+        )
+
+    # 3. FEATURES DE EXPERIENCIA Y MOMENTUM
+    if 'driver_race_count' in df_enhanced.columns:
+        # Experiencia categórica
+        df_enhanced['experience_level'] = pd.cut(
+            df_enhanced['driver_race_count'],
+            bins=[0, 50, 150, 300, np.inf],
+            labels=['Rookie', 'Junior', 'Veteran', 'Legend']
+        ).astype(str)
+
+    if 'podiums_last_3' in df_enhanced.columns and 'dnfs_last_3' in df_enhanced.columns:
+        # Momentum reciente (más podios, menos DNFs = mejor momentum)
+        df_enhanced['recent_momentum'] = (
+            df_enhanced['podiums_last_3'] - df_enhanced['dnfs_last_3']
+        )
+
+    # 4. FEATURES GEOGRÁFICAS Y TÉCNICAS
+    if 'lat' in df_enhanced.columns and 'lng' in df_enhanced.columns:
+        # Distancia desde Greenwich como proxy de zona horaria/clima
+        df_enhanced['distance_from_greenwich'] = np.sqrt(
+            df_enhanced['lat']**2 + df_enhanced['lng']**2
+        )
+
+    if 'alt' in df_enhanced.columns:
+        # Circuito de alta altitud (>1000m)
+        df_enhanced['high_altitude_circuit'] = (df_enhanced['alt'] > 1000).astype(int)
+
+    # 5. FEATURES DE TEMPORADA
+    if 'year' in df_enhanced.columns and 'round' in df_enhanced.columns:
+        # Progreso en temporada (normalizado)
+        season_progress = df_enhanced.groupby('year')['round'].transform(
+            lambda x: (x - x.min()) / (x.max() - x.min() + 1e-10)
+        )
+        df_enhanced['season_progress'] = season_progress
+
+        # Era de F1 (cambios reglamentarios importantes)
+        df_enhanced['f1_era'] = pd.cut(
+            df_enhanced['year'],
+            bins=[0, 1993, 2005, 2013, 2021, np.inf],
+            labels=['Classic', 'Modern', 'Hybrid_Early', 'Hybrid_Late', 'Current']
+        ).astype(str)
+
+    return df_enhanced
 
 
 def calcular_estadisticas_vuelta(lap_timings: pd.DataFrame) -> pd.DataFrame:
@@ -550,6 +762,92 @@ def codificar_variables_categoricas(master_dataset: pd.DataFrame) -> pd.DataFram
     return df_model_ready
 
 
+def detectar_multicolinealidad(df: pd.DataFrame, threshold: float = 0.8) -> pd.DataFrame:
+    """Detecta y maneja multicolinealidad automáticamente.
+
+    Args:
+        df: DataFrame con features numéricas
+        threshold: Umbral de correlación para considerar multicolinealidad
+
+    Returns:
+        DataFrame sin multicolinealidad excesiva
+    """
+    df_clean = df.copy()
+    numeric_cols = df_clean.select_dtypes(include=[np.number]).columns.tolist()
+
+    # Calcular matriz de correlación
+    corr_matrix = df_clean[numeric_cols].corr().abs()
+
+    # Encontrar pares altamente correlacionados
+    high_corr_pairs = []
+    for i in range(len(corr_matrix.columns)):
+        for j in range(i+1, len(corr_matrix.columns)):
+            if corr_matrix.iloc[i, j] > threshold:
+                col1, col2 = corr_matrix.columns[i], corr_matrix.columns[j]
+                high_corr_pairs.append((col1, col2, corr_matrix.iloc[i, j]))
+
+    # Eliminar variables redundantes priorizando las más interpretables
+    cols_to_remove = set()
+    priority_keep = [
+        'avg_lap_time', 'podium', 'qualifying_position', 'grid',
+        'avg_position_last_3', 'driver_race_count', 'constructor_avg_points'
+    ]
+
+    for col1, col2, corr_value in high_corr_pairs:
+        if col1 not in cols_to_remove and col2 not in cols_to_remove:
+            # Mantener la variable más interpretable o importante
+            if col1 in priority_keep and col2 not in priority_keep:
+                cols_to_remove.add(col2)
+            elif col2 in priority_keep and col1 not in priority_keep:
+                cols_to_remove.add(col1)
+            elif 'avg' in col1 and 'best' in col2:
+                cols_to_remove.add(col2)  # Mantener avg sobre best
+            elif 'seconds' in col1 and 'time' in col2:
+                cols_to_remove.add(col1)  # Mantener time sobre seconds
+            else:
+                # Si no hay preferencia clara, mantener el primero
+                cols_to_remove.add(col2)
+
+    # Remover columnas identificadas
+    df_clean = df_clean.drop(columns=list(cols_to_remove))
+
+    print(f"Removed {len(cols_to_remove)} highly correlated features: {list(cols_to_remove)}")
+
+    return df_clean
+
+
+def aplicar_validacion_temporal(df: pd.DataFrame, test_years: int = 2) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Aplica validación temporal para evitar data leakage.
+
+    Args:
+        df: DataFrame con datos
+        test_years: Número de años más recientes para test
+
+    Returns:
+        Tuple con datasets de train y test temporalmente separados
+    """
+    if 'year' not in df.columns:
+        print("Warning: No 'year' column found. Using random split.")
+        from sklearn.model_selection import train_test_split
+        return train_test_split(df, test_size=0.2, random_state=42)
+
+    # Obtener años únicos y ordenar
+    years = sorted(df['year'].unique())
+    if len(years) < test_years + 2:
+        print(f"Warning: Not enough years for temporal validation. Using last {len(years)//4} years for test.")
+        test_years = max(1, len(years) // 4)
+
+    # Separar por años
+    test_start_year = years[-test_years]
+    train_data = df[df['year'] < test_start_year].copy()
+    test_data = df[df['year'] >= test_start_year].copy()
+
+    print(f"Temporal split: Train years {years[0]}-{test_start_year-1}, Test years {test_start_year}-{years[-1]}")
+    print(f"Train size: {len(train_data)}, Test size: {len(test_data)}")
+
+    return train_data, test_data
+
+
 def crear_datasets_modelado(model_ready_data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Crea datasets finales para regresión y clasificación.
 
@@ -587,23 +885,54 @@ def crear_datasets_modelado(model_ready_data: pd.DataFrame) -> Tuple[pd.DataFram
     # Dataset de regresión
     if regression_target in model_ready_data.columns:
         regression_data = model_ready_data[model_ready_data[regression_target].notna()].copy()
+
+        # Añadir features avanzadas
+        regression_data = crear_features_avanzadas(regression_data)
+
+        # Seleccionar features finales incluyendo las nuevas
+        new_features = [
+            'qualifying_grid_diff', 'grid_penalty', 'qualifying_consistency',
+            'driver_vs_constructor_performance', 'circuit_specialization',
+            'recent_momentum', 'distance_from_greenwich', 'high_altitude_circuit',
+            'season_progress', 'qualified_for_q3'
+        ]
+
         regression_features_final = [col for col in regression_features if col in regression_data.columns]
+        regression_features_final.extend([col for col in new_features if col in regression_data.columns])
         regression_features_final.extend(important_onehot)
         regression_features_final.append(regression_target)
 
         df_regression = regression_data[regression_features_final].copy()
-        threshold = len(regression_features_final) * 0.7
+
+        # Aplicar detección de multicolinealidad
+        df_regression = detectar_multicolinealidad(df_regression, threshold=0.85)
+
+        # Limpieza final
+        threshold = len(df_regression.columns) * 0.6  # Más permisivo después de feature engineering
         df_regression = df_regression.dropna(thresh=threshold)
+
     else:
         df_regression = pd.DataFrame()
 
     # Dataset de clasificación
-    classification_features_final = [col for col in classification_features if col in model_ready_data.columns]
+    classification_data = model_ready_data.copy()
+    classification_data = crear_features_avanzadas(classification_data)
+
+    new_features_class = [
+        'qualifying_grid_diff', 'grid_penalty', 'driver_vs_constructor_performance',
+        'circuit_specialization', 'recent_momentum', 'high_altitude_circuit',
+        'season_progress', 'qualified_for_q3'
+    ]
+
+    classification_features_final = [col for col in classification_features if col in classification_data.columns]
+    classification_features_final.extend([col for col in new_features_class if col in classification_data.columns])
     classification_features_final.extend(important_onehot)
     classification_features_final.append(classification_target)
 
-    df_classification = model_ready_data[classification_features_final].copy()
-    threshold = len(classification_features_final) * 0.7
+    df_classification = classification_data[classification_features_final].copy()
+    df_classification = detectar_multicolinealidad(df_classification, threshold=0.85)
+
+    threshold = len(df_classification.columns) * 0.6
     df_classification = df_classification.dropna(thresh=threshold)
 
     return df_regression, df_classification
