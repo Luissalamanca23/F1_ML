@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  f1-ml-base:
+    build: .
+    volumes:
+      - .:/app
+      - /app/.venv
+      - /app/.git
+    working_dir: /app
+    environment:
+      - PYTHONPATH=/app/src
+    networks:
+      - f1-ml-network
+
+  jupyter:
+    extends: f1-ml-base
+    command: kedro jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+
+  kedro-viz:
+    extends: f1-ml-base
+    command: kedro viz --host=0.0.0.0 --port=4141 --no-browser
+    ports:
+      - "4141:4141"
+
+  kedro-shell:
+    extends: f1-ml-base
+    command: bash
+    stdin_open: true
+    tty: true
+    profiles:
+      - manual
+
+networks:
+  f1-ml-network:
+    driver: bridge

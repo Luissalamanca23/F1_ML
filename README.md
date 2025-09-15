@@ -116,3 +116,61 @@ Para eliminar automaticamente todo el contenido de las celdas de salida antes de
 ## Empaquetar tu proyecto Kedro
 
 [Mas informacion sobre construccion de documentacion del proyecto y empaquetado de tu proyecto](https://docs.kedro.org/en/stable/tutorial/package_a_project.html)
+
+
+## Docker
+
+Este proyecto incluye configuracion de Docker para facilitar el desarrollo y despliegue.
+
+### Construir la imagen Docker
+
+```bash
+docker build -t f1-ml .
+```
+
+### Servicios disponibles
+
+#### Jupyter Notebook
+Para ejecutar Jupyter con Kedro:
+
+```bash
+docker-compose up jupyter
+```
+
+Accede a Jupyter en: http://localhost:8888
+
+#### Kedro Viz
+Para visualizar los pipelines:
+
+```bash
+docker-compose up kedro-viz
+```
+
+Accede a Kedro Viz en: http://localhost:4141
+
+#### Ejecutar pipelines manualmente
+Para acceder a la terminal y ejecutar pipelines:
+
+```bash
+docker-compose run --rm kedro-shell
+```
+
+Dentro del contenedor, ejecuta:
+```bash
+# Ejecutar pipeline especifico
+kedro run --pipeline data_preprocessing
+
+# Ejecutar todos los pipelines
+kedro run
+```
+
+### Ejecutar todos los servicios
+Para iniciar Jupyter y Kedro Viz simultaneamente:
+
+```bash
+docker-compose up jupyter kedro-viz
+```
+
+## Empaquetar tu proyecto Kedro
+
+[Mas informacion sobre construccion de documentacion del proyecto y empaquetado de tu proyecto](https://docs.kedro.org/en/stable/tutorial/package_a_project.html)
