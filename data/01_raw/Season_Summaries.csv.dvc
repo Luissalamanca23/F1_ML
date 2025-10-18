@@ -1,0 +1,5 @@
+outs:
+- md5: c25eb7fd5193e5c72a43866c6d290358
+  size: 4594
+  hash: md5
+  path: Season_Summaries.csv

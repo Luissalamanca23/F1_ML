@@ -1,12 +1,9 @@
-version: '3.8'
-
 services:
   f1-ml-base:
     build: .
     volumes:
       - .:/app
       - /app/.venv
-      - /app/.git
     working_dir: /app
     environment:
       - PYTHONPATH=/app/src

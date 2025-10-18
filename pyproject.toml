@@ -8,6 +8,7 @@ name = "f1_ml"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
+    "dvc~=3.56.0",
     "ipython>=8.10",
     "jupyterlab>=3.0",
     "notebook",
