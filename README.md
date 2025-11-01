@@ -122,19 +122,13 @@ Para eliminar automaticamente todo el contenido de las celdas de salida antes de
 
 Este proyecto incluye configuracion de Docker para facilitar el desarrollo y despliegue.
 
-### Construir la imagen Docker
-
-```bash
-docker build -t f1-ml .
-```
-
 ### Servicios disponibles
 
 #### Jupyter Notebook
 Para ejecutar Jupyter con Kedro:
 
 ```bash
-docker-compose up jupyter
+docker compose up jupyter -d
 ```
 
 Accede a Jupyter en: http://localhost:8888
@@ -143,7 +137,7 @@ Accede a Jupyter en: http://localhost:8888
 Para visualizar los pipelines:
 
 ```bash
-docker-compose up kedro-viz
+docker compose up kedro-viz -d
 ```
 
 Accede a Kedro Viz en: http://localhost:4141
@@ -152,24 +146,107 @@ Accede a Kedro Viz en: http://localhost:4141
 Para acceder a la terminal y ejecutar pipelines:
 
 ```bash
-docker-compose run --rm kedro-shell
+docker compose run --rm --profile manual kedro-shell
 ```
 
 Dentro del contenedor, ejecuta:
 ```bash
-# Ejecutar pipeline especifico
-kedro run --pipeline data_preprocessing
+# Ejecutar pipeline especifico de regresion
+kedro run --pipeline regresion_data
+kedro run --pipeline regresion_models
 
 # Ejecutar todos los pipelines
 kedro run
 ```
 
-### Ejecutar todos los servicios
+### Ejecutar servicios Kedro
 Para iniciar Jupyter y Kedro Viz simultaneamente:
 
 ```bash
-docker-compose up jupyter kedro-viz
+docker compose up jupyter kedro-viz -d
 ```
+
+## Apache Airflow - Orquestacion de Pipelines
+
+Este proyecto integra Apache Airflow para orquestar los pipelines de Kedro de forma automatizada y escalable.
+
+### Que es Airflow
+
+Apache Airflow es una plataforma de orquestacion que permite:
+- Programar ejecuciones automaticas de pipelines
+- Monitorear el estado de las tareas en tiempo real
+- Gestionar dependencias entre tareas
+- Reintentar tareas fallidas automaticamente
+- Visualizar el flujo de trabajo en una interfaz web
+
+### DAG Implementado
+
+El DAG `f1_ml_pipeline_granular` ejecuta cada nodo de Kedro como una tarea individual:
+
+**Pipeline regresion_data (11 nodos):**
+- Carga de datos, merge, filtrado, limpieza
+- Split train/test, feature engineering
+- Encoding y escalado
+
+**Pipeline regresion_models (6 nodos):**
+- Entrenamiento de 11 modelos base
+- Seleccion y optimizacion de TOP 5
+- Guardado del modelo final
+
+**Total: 18 tareas secuenciales con reintentos automaticos**
+
+### Inicio Rapido con Airflow
+
+```bash
+# 1. Inicializar Airflow (solo la primera vez)
+docker compose up airflow-init
+
+# 2. Iniciar TODOS los servicios (Kedro + Airflow)
+docker compose up -d
+
+# 3. Acceder a las interfaces web
+# Airflow: http://localhost:8080 (usuario: airflow / password: airflow)
+# Kedro Viz: http://localhost:4141
+# Jupyter: http://localhost:8888
+
+# 4. Detener todos los servicios
+docker compose down
+```
+
+### Ejecutar el Pipeline desde Airflow
+
+1. Accede a http://localhost:8080
+2. Busca el DAG `f1_ml_pipeline_granular`
+3. Activa el toggle para habilitarlo
+4. Click en el boton "Play" para ejecutar
+
+**Ventajas del DAG granular:**
+- Visibilidad de cada nodo individual
+- Reintentos automaticos por nodo (2 intentos, delay 3 min)
+- Timeout de 30 minutos por nodo
+- Logs especificos para debugging
+
+O desde la linea de comandos:
+
+```bash
+docker compose run --rm --profile debug airflow-cli dags trigger f1_ml_pipeline_granular
+```
+
+### Documentacion Completa de Airflow
+
+Para instrucciones detalladas, troubleshooting y mejores practicas, consulta:
+
+- [docs/AIRFLOW_GUIA.md](docs/AIRFLOW_GUIA.md) - Guia completa de uso de Airflow
+
+### Servicios de Airflow Incluidos
+
+El stack completo de Airflow incluye:
+- **PostgreSQL** - Base de datos de metadatos
+- **Redis** - Message broker para Celery
+- **Webserver** - Interfaz web en puerto 8080
+- **Scheduler** - Programador de tareas
+- **Worker** - Ejecutor de tareas con Celery
+- **Triggerer** - Gestor de triggers asincronos
 
 ## Empaquetar tu proyecto Kedro
 

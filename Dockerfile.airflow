@@ -1,0 +1,25 @@
+# Dockerfile personalizado para Apache Airflow con dependencias de ML
+# Extiende la imagen oficial de Airflow e instala bibliotecas del sistema necesarias
+
+FROM apache/airflow:2.8.1-python3.11
+
+# Cambiar a usuario root para instalar dependencias del sistema
+USER root
+
+# Actualizar repositorios e instalar dependencias del sistema para LightGBM y otras librerias de ML
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libgomp1 \
+    g++ \
+    gcc \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Volver al usuario airflow
+USER airflow
+
+# Copiar requirements.txt e instalar dependencias de Python
+COPY requirements.txt /tmp/requirements.txt
+
+# Instalar todas las dependencias necesarias para Kedro y ML
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
