@@ -193,3 +193,313 @@ predictions:
 model_performance_report:
   type: pandas.CSVDataset
   filepath: data/08_reporting/model_performance_report.csv
+
+# ============================================================================
+# PIPELINE REGRESION_DATA - Datasets Intermedios
+# ============================================================================
+
+# Diccionario con las 6 tablas crudas cargadas
+raw_tables_dict:
+  type: MemoryDataset
+
+# DataFrame después de merge de 6 tablas
+df_merged:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/regresion_merged.csv
+
+# DataFrame filtrado por era moderna (2010-2024)
+df_modern_era:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/regresion_modern_era.csv
+
+# DataFrame sin DNFs
+df_no_dnfs:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/regresion_no_dnfs.csv
+
+# DataFrame sin variables con data leakage
+df_no_leakage:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/regresion_no_leakage.csv
+
+# DataFrame con valores imputados
+df_imputed:
+  type: pandas.CSVDataset
+  filepath: data/03_primary/regresion_imputed.csv
+
+# Features y target raw (antes de feature engineering)
+X_train_raw:
+  type: pandas.CSVDataset
+  filepath: data/03_primary/regresion_X_train_raw.csv
+
+X_test_raw:
+  type: pandas.CSVDataset
+  filepath: data/03_primary/regresion_X_test_raw.csv
+
+y_train:
+  type: pandas.CSVDataset
+  filepath: data/03_primary/regresion_y_train.csv
+
+y_test:
+  type: pandas.CSVDataset
+  filepath: data/03_primary/regresion_y_test.csv
+
+# Features con feature engineering
+X_train_fe:
+  type: pandas.CSVDataset
+  filepath: data/04_feature/regresion_X_train_fe.csv
+
+X_test_fe:
+  type: pandas.CSVDataset
+  filepath: data/04_feature/regresion_X_test_fe.csv
+
+# Features con target encoding
+X_train_target_enc:
+  type: pandas.CSVDataset
+  filepath: data/04_feature/regresion_X_train_target_enc.csv
+
+X_test_target_enc:
+  type: pandas.CSVDataset
+  filepath: data/04_feature/regresion_X_test_target_enc.csv
+
+# Target encoder serializado
+target_encoder:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/regresion_target_encoder.pkl
+
+# Features con one-hot encoding
+X_train_onehot:
+  type: pandas.CSVDataset
+  filepath: data/05_model_input/regresion_X_train_onehot.csv
+
+X_test_onehot:
+  type: pandas.CSVDataset
+  filepath: data/05_model_input/regresion_X_test_onehot.csv
+
+# Features escaladas (finales para modelado)
+X_train_scaled:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/regresion_X_train_scaled.pkl
+
+X_test_scaled:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/regresion_X_test_scaled.pkl
+
+# Scaler serializado
+scaler:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/regresion_scaler.pkl
+
+# ============================================================================
+# PIPELINE REGRESION_MODELS - Entrenamiento y Optimización
+# ============================================================================
+
+# Resultados de 11 modelos base
+resultados_modelos_base:
+  type: MemoryDataset
+
+# Comparación de modelos base
+comparacion_modelos_base:
+  type: pandas.CSVDataset
+  filepath: data/07_model_output/regresion_comparacion_modelos_base.csv
+
+# TOP 5 modelos seleccionados
+top5_modelos:
+  type: MemoryDataset
+
+# Resultados de modelos optimizados con GridSearch
+resultados_optimizados:
+  type: MemoryDataset
+
+# Comparación de modelos optimizados
+comparacion_optimizada:
+  type: pandas.CSVDataset
+  filepath: data/07_model_output/regresion_comparacion_optimizada.csv
+
+# Modelo final (mejor modelo optimizado)
+modelo_final_regresion:
+  type: pickle.PickleDataset
+  filepath: data/06_models/regresion_modelo_final.pkl
+
+# Nombre del mejor modelo
+nombre_modelo_final:
+  type: text.TextDataset
+  filepath: data/06_models/regresion_nombre_modelo_final.txt
+
+# Métricas finales del mejor modelo
+metricas_finales:
+  type: json.JSONDataset
+  filepath: data/07_model_output/regresion_metricas_finales.json
+
+# ============================================================================
+# PIPELINE CLASSIFICATION_DATA - Datasets para Clasificación (Podio)
+# ============================================================================
+
+# Raw data inputs (reutiliza los mismos CSVs)
+classification_raw_race_results:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Race_Results.csv
+
+classification_raw_qualifying_results:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Qualifying_Results.csv
+
+classification_raw_races:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Race_Schedule.csv
+
+classification_raw_drivers:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Driver_Details.csv
+
+classification_raw_constructors:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Team_Details.csv
+
+classification_raw_circuits:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Track_Information.csv
+
+# Diccionario con las 6 tablas crudas
+classification_raw_data_dict:
+  type: MemoryDataset
+
+# Datos mergeados
+classification_merged_data:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/classification_merged.parquet
+
+# Datos filtrados (solo finalizados)
+classification_filtered_data:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/classification_filtered.parquet
+
+# Datos con target is_podium
+classification_data_with_target:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/classification_with_target.parquet
+
+# Datos sin leakage
+classification_no_leakage:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/classification_no_leakage.parquet
+
+# Datos ordenados temporalmente
+classification_sorted_data:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/classification_sorted.parquet
+
+# Datos con features históricas de piloto
+classification_driver_features:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/classification_driver_features.parquet
+
+# Datos con features históricas de constructor
+classification_constructor_features:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/classification_constructor_features.parquet
+
+# Datos con todas las features
+classification_all_features:
+  type: pandas.ParquetDataset
+  filepath: data/04_feature/classification_all_features.parquet
+
+# Datos imputados
+classification_imputed_data:
+  type: pandas.ParquetDataset
+  filepath: data/04_feature/classification_imputed.parquet
+
+# Train/Test raw (antes de scaling/encoding)
+classification_X_train_raw:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/classification_X_train_raw.pkl
+
+classification_X_test_raw:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/classification_X_test_raw.pkl
+
+classification_y_train:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/classification_y_train.pkl
+
+classification_y_test:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/classification_y_test.pkl
+
+# Train/Test escalados
+classification_X_train_scaled:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/classification_X_train_scaled.pkl
+
+classification_X_test_scaled:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/classification_X_test_scaled.pkl
+
+# Scalers
+classification_scalers:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/classification_scalers.pkl
+
+# Train/Test finales (con encoding)
+classification_X_train:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/classification_X_train.pkl
+
+classification_X_test:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/classification_X_test.pkl
+
+# Encoders
+classification_encoders:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/classification_encoders.pkl
+
+# ============================================================================
+# PIPELINE CLASSIFICATION_MODELS - Entrenamiento y Optimización
+# ============================================================================
+
+# Datos balanceados con SMOTE
+classification_X_train_smote:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/classification_X_train_smote.pkl
+
+classification_y_train_smote:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/classification_y_train_smote.pkl
+
+# Modelos base entrenados
+classification_models_base:
+  type: MemoryDataset
+
+# Comparación modelos base
+classification_comparacion_modelos_base:
+  type: pandas.CSVDataset
+  filepath: data/07_model_output/classification_comparacion_base.csv
+
+# TOP 5 modelos
+classification_top5_dict:
+  type: MemoryDataset
+
+# Modelos optimizados con GridSearch
+classification_optimized_dict:
+  type: MemoryDataset
+
+# Comparación modelos optimizados
+classification_comparacion_optimizada:
+  type: pandas.CSVDataset
+  filepath: data/07_model_output/classification_comparacion_optimizada.csv
+
+# Modelo final
+classification_modelo_final:
+  type: pickle.PickleDataset
+  filepath: data/06_models/classification_modelo_final.pkl
+
+# Nombre del mejor modelo
+classification_nombre_modelo_final:
+  type: text.TextDataset
+  filepath: data/06_models/classification_nombre_modelo_final.txt
+
+# Métricas finales
+classification_metricas_finales:
+  type: json.JSONDataset
+  filepath: data/07_model_output/classification_metricas_finales.json
