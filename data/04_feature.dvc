@@ -1,0 +1,6 @@
+outs:
+- md5: c072d642f258ebe07d7815e1ec2b374a.dir
+  size: 2265614
+  nfiles: 4
+  hash: md5
+  path: 04_feature
