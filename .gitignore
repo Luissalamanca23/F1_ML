@@ -27,6 +27,9 @@ data/**
 # ignore kedro-viz metadata
 .viz
 
+# ignore el remoto local de DVC
+/.dvc/dvcstore/
+
 # ignore file based logs
 *.log
 
@@ -161,3 +164,23 @@ venv.bak/
 
 # mlflow local runs
 mlruns/*
+
+##########################
+# Apache Airflow
+
+# Airflow logs
+airflow/logs/*
+!airflow/logs/.gitkeep
+
+# Airflow database
+airflow/*.db
+airflow/*.db-shm
+airflow/*.db-wal
+
+# Airflow metadata
+airflow/airflow.cfg
+airflow/webserver_config.py
+airflow/unittests.cfg
+
+# Airflow environment variables (contiene credenciales)
+.env.airflow
