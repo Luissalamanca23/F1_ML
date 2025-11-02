@@ -18,8 +18,8 @@ RUN apt-get update && \
 # Volver al usuario airflow
 USER airflow
 
-# Copiar requirements.txt e instalar dependencias de Python
-COPY requirements.txt /tmp/requirements.txt
+# Copiar archivos de dependencias e instalar Python deps
+COPY requirements.txt requirements-airflow.txt /tmp/
 
-# Instalar todas las dependencias necesarias para Kedro y ML
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+# Instalar todas las dependencias necesarias para Kedro, ML y Airflow
+RUN pip install --no-cache-dir -r /tmp/requirements-airflow.txt

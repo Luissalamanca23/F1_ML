@@ -136,6 +136,13 @@ services:
   airflow-worker:
     <<: *airflow-common
     command: celery worker
+    # Límites de memoria y CPU para evitar OOM
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 4G
     healthcheck:
       test:
         - "CMD-SHELL"
