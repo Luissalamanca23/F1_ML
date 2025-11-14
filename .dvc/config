@@ -1,5 +1,56 @@
 [core]
-    remote = myremote
+    remote = local
+    # Para usar remote en la nube, cambiar a: remote = s3remote o remote = gcsremote
+    # autostage = true  # Auto-stage dvc.lock y .dvc files en git
 
-['remote "myremote"']
+# ==============================================================================
+# REMOTE LOCAL (Por defecto para desarrollo)
+# ==============================================================================
+['remote "local"']
     url = dvcstore
+    # Almacenamiento local para desarrollo y testing
+
+# ==============================================================================
+# REMOTE S3 (AWS) - Para producción
+# ==============================================================================
+# Para usar S3, descomentar y configurar:
+# ['remote "s3remote"']
+#     url = s3://your-bucket-name/dvc-storage
+#     # Credenciales:
+#     # - Opción 1: Variables de entorno AWS_ACCESS_KEY_ID y AWS_SECRET_ACCESS_KEY
+#     # - Opción 2: AWS CLI configurado (~/.aws/credentials)
+#     # - Opción 3: IAM Role en instancia EC2
+#     region = us-east-1
+#     # Para habilitar: dvc remote modify s3remote --local access_key_id YOUR_KEY
+#     # Para habilitar: dvc remote modify s3remote --local secret_access_key YOUR_SECRET
+
+# ==============================================================================
+# REMOTE GCS (Google Cloud Storage) - Para producción
+# ==============================================================================
+# Para usar GCS, descomentar y configurar:
+# ['remote "gcsremote"']
+#     url = gs://your-bucket-name/dvc-storage
+#     # Credenciales:
+#     # - Opción 1: Variable de entorno GOOGLE_APPLICATION_CREDENTIALS
+#     # - Opción 2: gcloud auth application-default login
+#     # Para habilitar: export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
+
+# ==============================================================================
+# REMOTE AZURE - Para producción
+# ==============================================================================
+# Para usar Azure Blob Storage, descomentar y configurar:
+# ['remote "azureremote"']
+#     url = azure://your-container-name/dvc-storage
+#     # Credenciales:
+#     # - Variables de entorno AZURE_STORAGE_CONNECTION_STRING o AZURE_STORAGE_ACCOUNT
+#     # Para habilitar: dvc remote modify azureremote --local connection_string "YOUR_CONNECTION_STRING"
+
+# ==============================================================================
+# COMANDOS ÚTILES
+# ==============================================================================
+# Cambiar remote activo: dvc remote default s3remote
+# Listar remotes: dvc remote list
+# Push a remote: dvc push
+# Pull desde remote: dvc pull
+# Ver status: dvc status
+# ==============================================================================

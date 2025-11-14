@@ -1,0 +1,140 @@
+# ============================================================================
+# DVC PIPELINE - PROYECTO MLOps FORMULA 1
+# ============================================================================
+# Este archivo define el pipeline completo de DVC para versionado automático
+# de datos, features y modelos. Cada stage corresponde a un pipeline de Kedro.
+# ============================================================================
+
+stages:
+  # ==========================================================================
+  # PIPELINE DE REGRESION - PREPARACION DE DATOS
+  # ==========================================================================
+  regresion_data_preparation:
+    cmd: kedro run --pipeline=regresion_data
+    deps:
+      - data/01_raw/circuits.csv
+      - data/01_raw/constructor_results.csv
+      - data/01_raw/constructors.csv
+      - data/01_raw/drivers.csv
+      - data/01_raw/qualifying.csv
+      - data/01_raw/results.csv
+      - src/f1_ml/pipelines/regresion_data/nodes.py
+      - src/f1_ml/pipelines/regresion_data/pipeline.py
+      - conf/base/parameters.yml
+    params:
+      - regresion_data.modern_era_start
+      - regresion_data.modern_era_end
+      - regresion_data.test_size
+      - regresion_data.random_state
+    outs:
+      - data/02_intermediate/merged_regresion.csv
+      - data/03_primary/filtered_modern_era.csv
+      - data/04_feature/X_train_scaled_regresion.csv
+      - data/04_feature/X_test_scaled_regresion.csv
+      - data/04_feature/y_train_regresion.csv
+      - data/04_feature/y_test_regresion.csv
+    desc: "Carga, merge, filtrado, limpieza y feature engineering para regresión"
+
+  # ==========================================================================
+  # PIPELINE DE REGRESION - ENTRENAMIENTO DE MODELOS
+  # ==========================================================================
+  regresion_models_training:
+    cmd: kedro run --pipeline=regresion_models
+    deps:
+      - data/04_feature/X_train_scaled_regresion.csv
+      - data/04_feature/X_test_scaled_regresion.csv
+      - data/04_feature/y_train_regresion.csv
+      - data/04_feature/y_test_regresion.csv
+      - src/f1_ml/pipelines/regresion_models/nodes.py
+      - src/f1_ml/pipelines/regresion_models/pipeline.py
+      - conf/base/parameters.yml
+    params:
+      - regresion_models.random_state
+      - regresion_models.cv_folds
+      - regresion_models.gridsearch_grids
+    outs:
+      - data/06_models/regresion_best_model.pkl:
+          cache: true
+      - data/07_model_output/regresion_metrics.json:
+          cache: false
+      - data/07_model_output/regresion_predictions.csv:
+          cache: false
+    metrics:
+      - data/07_model_output/regresion_metrics.json:
+          cache: false
+    desc: "Entrenamiento de 11 modelos, selección TOP 5, GridSearch y evaluación"
+
+  # ==========================================================================
+  # PIPELINE DE CLASIFICACION - PREPARACION DE DATOS
+  # ==========================================================================
+  classification_data_preparation:
+    cmd: kedro run --pipeline=classification_data
+    deps:
+      - data/01_raw/circuits.csv
+      - data/01_raw/constructor_results.csv
+      - data/01_raw/constructors.csv
+      - data/01_raw/drivers.csv
+      - data/01_raw/qualifying.csv
+      - data/01_raw/results.csv
+      - src/f1_ml/pipelines/classification_data/nodes.py
+      - src/f1_ml/pipelines/classification_data/pipeline.py
+      - conf/base/parameters.yml
+    params:
+      - classification_data.temporal_split_date
+      - classification_data.random_state
+    outs:
+      - data/02_intermediate/merged_classification.csv
+      - data/03_primary/valid_finishes_classification.csv
+      - data/04_feature/X_train_scaled_classification.csv
+      - data/04_feature/X_test_scaled_classification.csv
+      - data/04_feature/y_train_classification.csv
+      - data/04_feature/y_test_classification.csv
+    desc: "Carga, merge, creación de target podio, features históricas y split temporal"
+
+  # ==========================================================================
+  # PIPELINE DE CLASIFICACION - ENTRENAMIENTO DE MODELOS
+  # ==========================================================================
+  classification_models_training:
+    cmd: kedro run --pipeline=classification_models
+    deps:
+      - data/04_feature/X_train_scaled_classification.csv
+      - data/04_feature/X_test_scaled_classification.csv
+      - data/04_feature/y_train_classification.csv
+      - data/04_feature/y_test_classification.csv
+      - src/f1_ml/pipelines/classification_models/nodes.py
+      - src/f1_ml/pipelines/classification_models/pipeline.py
+      - conf/base/parameters.yml
+    params:
+      - classification_models.random_state
+      - classification_models.cv_folds
+      - classification_models.scoring
+      - classification_models.smote_sampling_strategy
+      - classification_models.gridsearch_grids
+    outs:
+      - data/06_models/classification_best_model.pkl:
+          cache: true
+      - data/07_model_output/classification_metrics.json:
+          cache: false
+      - data/07_model_output/classification_predictions.csv:
+          cache: false
+      - data/07_model_output/classification_confusion_matrix.png:
+          cache: false
+      - data/07_model_output/classification_roc_curve.png:
+          cache: false
+    metrics:
+      - data/07_model_output/classification_metrics.json:
+          cache: false
+    plots:
+      - data/07_model_output/classification_confusion_matrix.png
+      - data/07_model_output/classification_roc_curve.png
+    desc: "SMOTE, entrenamiento de 6 modelos, selección TOP 5, GridSearch y evaluación"
+
+# ============================================================================
+# CONFIGURACION ADICIONAL
+# ============================================================================
+# Para ejecutar todo el pipeline: dvc repro
+# Para ejecutar solo regresión: dvc repro regresion_models_training
+# Para ejecutar solo clasificación: dvc repro classification_models_training
+# Para ver el DAG: dvc dag
+# Para trackear cambios: git add dvc.yaml dvc.lock && git commit -m "Update pipeline"
+# ============================================================================
