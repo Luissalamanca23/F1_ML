@@ -38,6 +38,9 @@ regresion_models:
   # Random state para reproducibilidad
   random_state: 42
 
+  # Validación cruzada
+  cv_folds: 5
+
   # Grids de GridSearch para cada modelo (reducidos para evitar OOM)
   gridsearch_grids:
     GradientBoosting:
@@ -133,9 +136,9 @@ classification_models:
   # Configuración SMOTE
   smote_sampling_strategy: 0.5
 
-  # Scoring principal y CV (reducido a 3 para evitar OOM)
+  # Scoring principal y CV
   scoring: 'f1'
-  cv_folds: 3
+  cv_folds: 5
 
   # Grids de GridSearch para cada modelo (reducidos para evitar OOM)
   gridsearch_grids:

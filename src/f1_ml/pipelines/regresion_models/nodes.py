@@ -276,7 +276,7 @@ def optimize_with_gridsearch(
     params: Dict[str, Any],
 ) -> Dict[str, Dict[str, Any]]:
     """
-    Aplica GridSearchCV a los TOP 5 modelos con 3-fold CV.
+    Aplica GridSearchCV a los TOP 5 modelos con validación cruzada.
 
     Args:
         top5_modelos: Dict con TOP 5 modelos
@@ -284,16 +284,17 @@ def optimize_with_gridsearch(
         y_train: Target de entrenamiento
         X_test: Features de test
         y_test: Target de test
-        params: Dict con 'random_state' y 'gridsearch_grids'
+        params: Dict con 'random_state', 'gridsearch_grids' y 'cv_folds'
 
     Returns:
         Dict con modelos optimizados
     """
-    logger.info("[GRIDSEARCH] Iniciando optimización de TOP 5 modelos...")
-    logger.info("  Método: GridSearchCV con 3-fold CV (reducido para evitar OOM)")
-
     random_state = params.get("random_state", 42)
     grids = params.get("gridsearch_grids", {})
+    cv_folds = params.get("cv_folds", 5)
+
+    logger.info("[GRIDSEARCH] Iniciando optimización de TOP 5 modelos...")
+    logger.info(f"  Método: GridSearchCV con {cv_folds}-fold CV")
 
     resultados_optimizados = {}
 
@@ -319,13 +320,13 @@ def optimize_with_gridsearch(
             logger.warning(f"    [SKIP] No se pudo crear modelo base para {nombre}")
             continue
 
-        # GridSearch con 3-fold CV (reducido de 5 para evitar OOM)
+        # GridSearch con validación cruzada
         inicio = time.time()
         grid_search = GridSearchCV(
             estimator=modelo_base,
             param_grid=param_grid,
             scoring="r2",
-            cv=3,
+            cv=cv_folds,
             n_jobs=-1,
             verbose=0,
             return_train_score=True,
