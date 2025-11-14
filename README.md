@@ -190,7 +190,24 @@ DVC crea archivos `.dvc` que actuan como punteros a los datos reales:
 - Para descargar los datos reales: `dvc pull`
 - Para subir nuevas versiones: `dvc add <archivo>` + `git add <archivo>.dvc` + `dvc push`
 
-### Comandos DVC Utiles
+### Pipeline de DVC (dvc.yaml)
+
+El proyecto utiliza `dvc.yaml` para definir un pipeline reproducible de ML que incluye:
+
+**Stages del Pipeline:**
+1. **regresion_data_preparation**: Prepara datos para regresión (11 nodos de Kedro)
+2. **regresion_models_training**: Entrena y optimiza modelos de regresión (6 nodos)
+3. **classification_data_preparation**: Prepara datos para clasificación (13 nodos)
+4. **classification_models_training**: Entrena y optimiza modelos de clasificación (7 nodos)
+
+**Ventajas del pipeline DVC:**
+- Reproducibilidad automática de experimentos
+- Tracking de dependencias entre stages
+- Cacheo inteligente (solo re-ejecuta stages con cambios)
+- Versionado automático de datos, features y modelos
+- Métricas y plots versionados con Git
+
+### Comandos DVC Básicos
 
 ```bash
 # Descargar datos trackeados por DVC
@@ -207,20 +224,305 @@ dvc push
 # Ver el estado de archivos DVC
 dvc status
 
-# Reproducir pipeline completo
+# Reproducir pipeline completo (ejecuta todos los stages)
 dvc repro
+
+# Reproducir solo un stage específico
+dvc repro regresion_models_training
+
+# Ver el DAG del pipeline
+dvc dag
+
+# Ver métricas de experimentos
+dvc metrics show
+dvc metrics diff  # Comparar con versión anterior
+
+# Ver plots de experimentos
+dvc plots show
 ```
+
+### Scripts de Automatización DVC
+
+El proyecto incluye scripts bash para facilitar operaciones comunes de DVC:
+
+#### dvc_push.sh - Subir datos y modelos al remote
+
+```bash
+# Push completo de todos los artefactos
+./scripts/dvc_push.sh
+
+# Push solo datos
+./scripts/dvc_push.sh --data
+
+# Push solo modelos
+./scripts/dvc_push.sh --models
+
+# Push específico
+./scripts/dvc_push.sh data/06_models.dvc
+```
+
+**Características:**
+- Validación de entorno y remote configurado
+- Confirmación interactiva antes de push
+- Auto-commit de archivos .dvc y dvc.lock en Git
+- Logging detallado de operaciones
+- Manejo de errores robusto
+
+#### dvc_pull.sh - Descargar datos y modelos desde remote
+
+```bash
+# Pull completo de todos los artefactos
+./scripts/dvc_pull.sh
+
+# Pull solo datos raw
+./scripts/dvc_pull.sh --data-raw
+
+# Pull solo features procesadas
+./scripts/dvc_pull.sh --features
+
+# Pull solo modelos
+./scripts/dvc_pull.sh --models
+
+# Pull con verificación de checksums
+./scripts/dvc_pull.sh --all --verify
+```
+
+**Características:**
+- Validación de integridad de datos descargados
+- Contador de archivos por categoría
+- Verificación opcional de checksums MD5
+- Sugerencias de próximos pasos después del pull
 
 ### Configuracion del Storage Remoto
 
-El storage remoto puede ser:
-- Amazon S3
-- Google Cloud Storage
-- Azure Blob Storage
-- SSH/SFTP
-- Almacenamiento local compartido
+#### Opción 1: Local (Por defecto - Desarrollo)
 
-La configuracion se encuentra en `.dvc/config` (no incluida en el repositorio por razones de seguridad).
+El proyecto viene configurado con storage local en `dvcstore/`:
+
+```bash
+# Ya está configurado, no requiere acción adicional
+dvc push  # Guarda en ./dvcstore/
+dvc pull  # Descarga de ./dvcstore/
+```
+
+#### Opción 2: Amazon S3 (Producción recomendada)
+
+**Configuración:**
+
+1. Crear bucket en AWS S3:
+```bash
+aws s3 mb s3://f1-ml-dvc-storage --region us-east-1
+```
+
+2. Descomentar y configurar en `.dvc/config`:
+```ini
+['remote "s3remote"']
+    url = s3://f1-ml-dvc-storage/dvc-storage
+    region = us-east-1
+```
+
+3. Cambiar remote por defecto:
+```bash
+dvc remote default s3remote
+```
+
+4. Configurar credenciales (opción 1 - AWS CLI):
+```bash
+aws configure
+# Ingresa AWS_ACCESS_KEY_ID y AWS_SECRET_ACCESS_KEY
+```
+
+**O usar variables de entorno:**
+```bash
+export AWS_ACCESS_KEY_ID="tu-access-key"
+export AWS_SECRET_ACCESS_KEY="tu-secret-key"
+```
+
+#### Opción 3: Google Cloud Storage (GCS)
+
+**Configuración:**
+
+1. Crear bucket en GCS:
+```bash
+gsutil mb -p tu-proyecto gs://f1-ml-dvc-storage
+```
+
+2. Descomentar y configurar en `.dvc/config`:
+```ini
+['remote "gcsremote"']
+    url = gs://f1-ml-dvc-storage/dvc-storage
+```
+
+3. Cambiar remote por defecto:
+```bash
+dvc remote default gcsremote
+```
+
+4. Autenticar con gcloud:
+```bash
+gcloud auth application-default login
+```
+
+**O usar service account:**
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account-key.json"
+```
+
+#### Opción 4: Azure Blob Storage
+
+**Configuración:**
+
+1. Crear container en Azure:
+```bash
+az storage container create --name f1-ml-dvc --account-name tuaccount
+```
+
+2. Descomentar y configurar en `.dvc/config`:
+```ini
+['remote "azureremote"']
+    url = azure://f1-ml-dvc/dvc-storage
+```
+
+3. Cambiar remote por defecto:
+```bash
+dvc remote default azureremote
+```
+
+4. Configurar connection string:
+```bash
+dvc remote modify azureremote --local connection_string "tu-connection-string"
+```
+
+### Workflow Completo con DVC
+
+**Caso de uso: Experimentar con nuevas features**
+
+```bash
+# 1. Pull de datos actuales
+dvc pull
+
+# 2. Modificar código (ej: agregar nueva feature en regresion_data/nodes.py)
+vim src/f1_ml/pipelines/regresion_data/nodes.py
+
+# 3. Modificar parámetros si es necesario
+vim conf/base/parameters.yml
+
+# 4. Reproducir pipeline (DVC detecta cambios y re-ejecuta stages afectados)
+dvc repro
+
+# 5. Revisar métricas y comparar con versión anterior
+dvc metrics show
+dvc metrics diff
+
+# 6. Si los resultados son buenos, commitear cambios
+git add dvc.lock src/ conf/
+git commit -m "feat: Agregar nueva feature que mejora R2 en 0.05"
+
+# 7. Push de datos y modelos al remote
+dvc push
+
+# 8. Push de código al repositorio
+git push
+```
+
+### Integración DVC + Airflow
+
+El DAG unificado de Airflow (`f1_ml_unified_pipeline.py`) puede integrarse con DVC:
+
+**Agregar tasks de DVC al DAG:**
+
+```python
+# Task de dvc pull antes de ejecutar pipelines
+dvc_pull_task = BashOperator(
+    task_id='00_dvc_pull',
+    bash_command='dvc pull',
+    dag=dag,
+)
+
+# Task de dvc push después de consolidar resultados
+dvc_push_task = BashOperator(
+    task_id='07_dvc_push',
+    bash_command='dvc push',
+    dag=dag,
+)
+
+# Flujo: dvc_pull → pipelines → consolidar → dvc_push
+dvc_pull_task >> verificar_entorno >> ... >> consolidar_resultados >> dvc_push_task
+```
+
+### Reproducibilidad Completa
+
+Con DVC, Git y Docker, el proyecto es 100% reproducible:
+
+```bash
+# 1. Clonar repositorio
+git clone https://github.com/tu-usuario/f1-ml.git
+cd f1-ml
+
+# 2. Configurar remote de DVC (si usas S3/GCS/Azure)
+vim .dvc/config  # Descomentar remote apropiado
+
+# 3. Pull de datos y modelos
+dvc pull
+
+# 4. Levantar entorno con Docker
+docker-compose up -d
+
+# 5. Ejecutar pipeline de Kedro (opcional, ya tienes los modelos)
+kedro run
+
+# 6. O reproducir desde cero con DVC
+dvc repro
+```
+
+### Troubleshooting DVC
+
+**Problema: `dvc push` falla con error de autenticación**
+
+Solución AWS S3:
+```bash
+aws configure list  # Verificar configuración
+aws s3 ls s3://tu-bucket  # Probar acceso
+dvc remote modify s3remote --local access_key_id TU_KEY
+dvc remote modify s3remote --local secret_access_key TU_SECRET
+```
+
+**Problema: `dvc pull` descarga archivos corruptos**
+
+Solución:
+```bash
+dvc status  # Ver qué archivos están desactualizados
+dvc fetch --all  # Descargar todo sin modificar working directory
+dvc checkout  # Actualizar working directory con archivos del cache
+```
+
+**Problema: Archivos grandes causan OOM al hacer `dvc add`**
+
+Solución:
+```bash
+# Dividir archivo grande en chunks o usar streaming
+split -b 100M archivo_grande.csv archivo_chunk_
+dvc add archivo_chunk_*
+```
+
+**Problema: `.dvc/cache` ocupa mucho espacio en disco**
+
+Solución:
+```bash
+# Limpiar cache de versiones antiguas no referenciadas
+dvc gc --workspace  # Mantener solo versiones actuales
+dvc gc --cloud      # Limpiar también en remote
+```
+
+### Mejores Prácticas DVC
+
+1. **Commitear siempre dvc.lock**: Este archivo garantiza reproducibilidad exacta
+2. **No editar manualmente archivos .dvc**: Usar comandos `dvc add`, `dvc run`, etc.
+3. **Usar dvc.yaml para pipelines ML**: Mejor que scripts bash ad-hoc
+4. **Versionar parámetros en params.yaml**: DVC trackea cambios automáticamente
+5. **Configurar remote en producción**: No usar storage local para proyectos serios
+6. **Usar `.dvcignore` para excluir archivos**: Similar a `.gitignore` para DVC
+7. **Hacer `dvc push` regularmente**: No perder trabajo por fallos de disco local
 
 ---
 
