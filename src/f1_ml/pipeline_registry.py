@@ -12,6 +12,7 @@ from f1_ml.pipelines import regresion_data
 from f1_ml.pipelines import regresion_models
 from f1_ml.pipelines import classification_data
 from f1_ml.pipelines import classification_models
+from f1_ml.pipelines import clustering_pilotos
 
 
 def register_pipelines() -> Dict[str, Pipeline]:
@@ -28,11 +29,15 @@ def register_pipelines() -> Dict[str, Pipeline]:
     classification_data_pipeline = classification_data.create_pipeline()
     classification_models_pipeline = classification_models.create_pipeline()
 
+    # Pipeline de clustering
+    clustering_pilotos_pipeline = clustering_pilotos.create_pipeline()
+
     return {
-        # Pipeline completo por defecto: ejecuta regresión + clasificación
+        # Pipeline completo por defecto: ejecuta regresión + clasificación + clustering
         "__default__": (
             regresion_data_pipeline + regresion_models_pipeline +
-            classification_data_pipeline + classification_models_pipeline
+            classification_data_pipeline + classification_models_pipeline +
+            clustering_pilotos_pipeline
         ),
 
         # Pipeline completo de regresión
@@ -40,6 +45,9 @@ def register_pipelines() -> Dict[str, Pipeline]:
 
         # Pipeline completo de clasificación
         "classification": classification_data_pipeline + classification_models_pipeline,
+        
+        # Pipeline de clustering
+        "clustering_pilotos": clustering_pilotos_pipeline,
 
         # Pipelines individuales de regresión
         "regresion_data": regresion_data_pipeline,

@@ -1,0 +1,13 @@
+# Parámetros para el pipeline de clustering de pilotos
+
+clustering_pilotos_options:
+  min_races: 20
+  n_clusters: 3
+  features:
+    - avg_grid
+    - avg_finish
+    - win_rate
+    - podium_rate
+    - top10_rate
+    - dnf_rate
+    - avg_positions_gained

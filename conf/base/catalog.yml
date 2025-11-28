@@ -503,3 +503,28 @@ classification_nombre_modelo_final:
 classification_metricas_finales:
   type: json.JSONDataset
   filepath: data/07_model_output/classification_metricas_finales.json
+
+# ============================================================================
+# PIPELINE CLUSTERING_PILOTOS - Segmentación No Supervisada (Mejor Modelo)
+# ============================================================================
+
+# Features procesadas por piloto
+drivers_features_processed:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/clustering_drivers_features.parquet
+
+# Modelo de Clustering (KMeans)
+driver_clustering_model:
+  type: pickle.PickleDataset
+  filepath: data/06_models/driver_clustering_kmeans_model.pkl
+  versioned: true
+
+# Datos con etiquetas de cluster asignadas
+drivers_clustered:
+  type: pandas.CSVDataset
+  filepath: data/07_model_output/driver_clusters_final.csv
+
+# Métricas de evaluación del clustering
+clustering_metrics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/driver_clustering_metrics.json
